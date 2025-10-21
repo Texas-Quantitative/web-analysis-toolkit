@@ -1,0 +1,54 @@
+{
+  "name": "web-analysis-toolkit",
+  "version": "1.0.0",
+  "description": "Comprehensive CSS extraction, responsive analysis, and media query extraction tools for pixel-perfect website recreation",
+  "type": "module",
+  "main": "src/index.mjs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Texas-Quantitative/web-analysis-toolkit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Texas-Quantitative/web-analysis-toolkit/issues"
+  },
+  "homepage": "https://github.com/Texas-Quantitative/web-analysis-toolkit#readme",
+  "scripts": {
+    "extract:media-queries": "node src/extractors/media-queries.mjs",
+    "extract:static-css": "node src/extractors/static-css.mjs",
+    "extract:computed": "node src/extractors/computed-styles.mjs",
+    "analyze:responsive": "node src/analyzers/responsive.mjs",
+    "analyze:comprehensive": "node src/analyzers/comprehensive.mjs",
+    "analyze:elements": "node src/analyzers/elements.mjs",
+    "analyze:complete": "npm run analyze:responsive && npm run analyze:comprehensive && npm run extract:media-queries && npm run extract:computed",
+    "setup": "mkdir -p analysis .cache && npm install",
+    "test": "echo \"Test suite coming soon\" && exit 0"
+  },
+  "keywords": [
+    "css-extraction",
+    "web-scraping",
+    "style-analysis",
+    "website-recreation",
+    "puppeteer",
+    "automation",
+    "responsive-design",
+    "media-queries",
+    "web-development",
+    "css-analysis"
+  ],
+  "author": "Texas Quantitative Development Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "puppeteer": "^23.3.0",
+    "jsdom": "^24.1.0",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {},
+  "directories": {
+    "doc": "docs",
+    "example": "examples",
+    "test": "tests"
+  }
+}
