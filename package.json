@@ -1,6 +1,6 @@
 {
   "name": "web-analysis-toolkit",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Comprehensive CSS extraction, responsive analysis, and media query extraction tools for pixel-perfect website recreation",
   "type": "module",
   "main": "src/index.mjs",
@@ -16,9 +16,13 @@
     "extract:media-queries": "node src/extractors/media-queries.mjs",
     "extract:static-css": "node src/extractors/static-css.mjs",
     "extract:computed": "node src/extractors/computed-styles.mjs",
+    "extract:fonts": "node src/extractors/font-files.mjs",
     "analyze:responsive": "node src/analyzers/responsive.mjs",
     "analyze:comprehensive": "node src/analyzers/comprehensive.mjs",
     "analyze:elements": "node src/analyzers/elements.mjs",
+    "analyze:mobile-menu": "node src/analyzers/mobile-menu.mjs",
+    "analyze:interactive": "node src/analyzers/interactive-states.mjs",
+    "analyze:positioning": "node src/analyzers/relative-positioning.mjs",
     "analyze:complete": "npm run analyze:responsive && npm run analyze:comprehensive && npm run extract:media-queries && npm run extract:computed",
     "setup": "mkdir -p analysis .cache && npm install",
     "test": "echo \"Test suite coming soon\" && exit 0"

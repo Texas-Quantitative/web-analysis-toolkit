@@ -137,3 +137,64 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# ==================================================================
+# Web Analysis Toolkit - Specific Patterns
+# ==================================================================
+
+# Analysis output directories
+analysis/
+!analysis/.gitkeep
+
+# Cache directories (toolkit smart caching)
+.cache/
+*.cache.json
+*-cache.json
+
+# Temporary files and debug output
+temp/
+tmp/
+debug/
+*-debug.png
+*-debug.json
+debug-*.png
+debug-*.json
+
+# Screenshots (generated during analysis)
+screenshots/
+*.screenshot.png
+*-screenshot.png
+*-before.png
+*-after.png
+
+# Analysis reports (generated)
+*-analysis.json
+*-report.md
+*-inventory.json
+orig/
+
+# Puppeteer/browser artifacts
+.chromium/
+.firefox/
+chromium/
+firefox/
+
+# Log files specific to analysis tools
+analysis-*.log
+extract-*.log
+audit-*.log
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE-specific files (beyond .vscode-test)
+.idea/
+*.swp
+*.swo
+*~
+
+# ==================================================================
+# End Web Analysis Toolkit Patterns
+# ==================================================================

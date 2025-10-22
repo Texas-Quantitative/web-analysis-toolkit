@@ -205,11 +205,178 @@ async function extractMediaQueries(url) {
         console.log(`✅ Found ${mediaQueryData.summary.totalMediaQueries} media queries`);
         console.log(`✅ Identified ${mediaQueryData.summary.uniqueBreakpoints.length} unique breakpoints\n`);
 
+        // Calculate complexity score
+        const complexityAnalysis = calculateComplexity(mediaQueryData);
+        mediaQueryData.complexity = complexityAnalysis;
+
         return mediaQueryData;
 
     } finally {
         await browser.close();
     }
+}
+
+function calculateComplexity(data) {
+    /**
+     * Complexity Score (0-100) based on:
+     * - Number of unique breakpoints (weight: 25%)
+     * - Number of properties changed per breakpoint (weight: 30%)
+     * - Presence of nested/combined media queries (weight: 20%)
+     * - Overlap/conflicts between breakpoints (weight: 15%)
+     * - Total media query count (weight: 10%)
+     */
+    
+    const analysis = {
+        score: 0,
+        level: 'unknown',
+        recommendation: '',
+        breakdown: {
+            breakpointCount: 0,
+            propertyChangesPerBreakpoint: 0,
+            nestedQueries: 0,
+            overlaps: 0,
+            totalQueries: 0
+        },
+        problemBreakpoints: []
+    };
+    
+    // 1. Breakpoint Count Score (0-25 points)
+    const breakpointCount = data.summary.uniqueBreakpoints.length;
+    analysis.breakdown.breakpointCount = breakpointCount;
+    
+    let breakpointScore = 0;
+    if (breakpointCount === 0) breakpointScore = 0;
+    else if (breakpointCount <= 3) breakpointScore = 5;  // Simple
+    else if (breakpointCount <= 5) breakpointScore = 10; // Moderate
+    else if (breakpointCount <= 7) breakpointScore = 15; // Complex
+    else if (breakpointCount <= 10) breakpointScore = 20; // Very complex
+    else breakpointScore = 25; // Extremely complex
+    
+    // 2. Property Changes Score (0-30 points)
+    let totalProperties = 0;
+    let maxPropertiesAtBreakpoint = 0;
+    const breakpointPropertyCounts = {};
+    
+    data.mediaQueries.forEach(mq => {
+        const key = mq.breakpoint ? `${mq.type}-${mq.breakpoint}` : 'other';
+        if (!breakpointPropertyCounts[key]) {
+            breakpointPropertyCounts[key] = 0;
+        }
+        
+        mq.rules.forEach(rule => {
+            const propCount = Object.keys(rule.properties).length;
+            totalProperties += propCount;
+            breakpointPropertyCounts[key] += propCount;
+        });
+    });
+    
+    // Find max properties at any single breakpoint
+    Object.values(breakpointPropertyCounts).forEach(count => {
+        if (count > maxPropertiesAtBreakpoint) {
+            maxPropertiesAtBreakpoint = count;
+        }
+    });
+    
+    const avgPropertiesPerBreakpoint = breakpointCount > 0 ? totalProperties / breakpointCount : 0;
+    analysis.breakdown.propertyChangesPerBreakpoint = Math.round(avgPropertiesPerBreakpoint);
+    
+    let propertyScore = 0;
+    if (avgPropertiesPerBreakpoint <= 5) propertyScore = 5;   // Few changes
+    else if (avgPropertiesPerBreakpoint <= 15) propertyScore = 12; // Moderate changes
+    else if (avgPropertiesPerBreakpoint <= 30) propertyScore = 20; // Many changes
+    else propertyScore = 30; // Excessive changes
+    
+    // 3. Nested/Combined Queries Score (0-20 points)
+    let nestedOrCombinedCount = 0;
+    data.mediaQueries.forEach(mq => {
+        // Check for combined conditions (e.g., "screen and (min-width: 768px) and (max-width: 1024px)")
+        if (mq.condition.includes(' and ') && mq.condition.split(' and ').length > 2) {
+            nestedOrCombinedCount++;
+        }
+        // Check for orientation, resolution, aspect-ratio, etc.
+        if (mq.condition.match(/(orientation|resolution|aspect-ratio|hover|pointer)/)) {
+            nestedOrCombinedCount++;
+        }
+    });
+    
+    analysis.breakdown.nestedQueries = nestedOrCombinedCount;
+    
+    let nestedScore = 0;
+    if (nestedOrCombinedCount === 0) nestedScore = 0;
+    else if (nestedOrCombinedCount <= 2) nestedScore = 5;
+    else if (nestedOrCombinedCount <= 5) nestedScore = 12;
+    else nestedScore = 20;
+    
+    // 4. Overlap/Conflict Score (0-15 points)
+    // Detect overlapping breakpoints (e.g., max-width: 768px and min-width: 768px)
+    const minWidths = data.mediaQueries
+        .filter(mq => mq.type === 'min-width' && mq.breakpoint)
+        .map(mq => mq.breakpoint);
+    const maxWidths = data.mediaQueries
+        .filter(mq => mq.type === 'max-width' && mq.breakpoint)
+        .map(mq => mq.breakpoint);
+    
+    let overlapCount = 0;
+    minWidths.forEach(min => {
+        maxWidths.forEach(max => {
+            // Check if there's potential overlap
+            if (Math.abs(min - max) <= 1) {
+                overlapCount++;
+            }
+        });
+    });
+    
+    analysis.breakdown.overlaps = overlapCount;
+    
+    let overlapScore = 0;
+    if (overlapCount === 0) overlapScore = 0;
+    else if (overlapCount <= 2) overlapScore = 5;
+    else if (overlapCount <= 5) overlapScore = 10;
+    else overlapScore = 15;
+    
+    // 5. Total Query Count Score (0-10 points)
+    const totalQueries = data.summary.totalMediaQueries;
+    analysis.breakdown.totalQueries = totalQueries;
+    
+    let queryCountScore = 0;
+    if (totalQueries <= 10) queryCountScore = 2;
+    else if (totalQueries <= 25) queryCountScore = 5;
+    else if (totalQueries <= 50) queryCountScore = 7;
+    else queryCountScore = 10;
+    
+    // Calculate total score
+    analysis.score = breakpointScore + propertyScore + nestedScore + overlapScore + queryCountScore;
+    
+    // Determine complexity level
+    if (analysis.score <= 20) {
+        analysis.level = 'Simple';
+        analysis.recommendation = 'Use basic responsive analyzer. Site has straightforward breakpoint behavior.';
+    } else if (analysis.score <= 40) {
+        analysis.level = 'Moderate';
+        analysis.recommendation = 'Use standard responsive analysis tools. Site has typical mobile-first or desktop-first patterns.';
+    } else if (analysis.score <= 60) {
+        analysis.level = 'Complex';
+        analysis.recommendation = 'Use comprehensive multi-viewport analysis. Site has intricate responsive behavior.';
+    } else if (analysis.score <= 80) {
+        analysis.level = 'Very Complex';
+        analysis.recommendation = 'Use comprehensive analyzer with detailed breakpoint analysis. Consider iterative refinement approach.';
+    } else {
+        analysis.level = 'Extremely Complex';
+        analysis.recommendation = 'Site has highly complex responsive patterns. Recommend component-by-component analysis with positioning calculator.';
+    }
+    
+    // Identify problem breakpoints (those with unusually high property changes)
+    Object.entries(breakpointPropertyCounts).forEach(([breakpoint, count]) => {
+        if (count > avgPropertiesPerBreakpoint * 1.5 && count > 20) {
+            analysis.problemBreakpoints.push({
+                breakpoint,
+                propertyCount: count,
+                reason: 'High number of property changes - may indicate major layout shift'
+            });
+        }
+    });
+    
+    return analysis;
 }
 
 function applyFilters(data) {
@@ -261,6 +428,29 @@ function displayResults(data) {
     console.log('📊 SUMMARY:');
     console.log(`   Total Media Queries: ${data.summary.totalMediaQueries}`);
     console.log(`   Unique Breakpoints: ${data.summary.uniqueBreakpoints.join(', ')}px\n`);
+
+    // Display complexity analysis
+    if (data.complexity) {
+        console.log('🎯 COMPLEXITY ANALYSIS:');
+        console.log(`   Score: ${data.complexity.score}/100`);
+        console.log(`   Level: ${data.complexity.level}`);
+        console.log(`   Recommendation: ${data.complexity.recommendation}\n`);
+        
+        console.log('   Breakdown:');
+        console.log(`   - Unique Breakpoints: ${data.complexity.breakdown.breakpointCount}`);
+        console.log(`   - Avg Properties/Breakpoint: ${data.complexity.breakdown.propertyChangesPerBreakpoint}`);
+        console.log(`   - Nested/Combined Queries: ${data.complexity.breakdown.nestedQueries}`);
+        console.log(`   - Potential Overlaps: ${data.complexity.breakdown.overlaps}`);
+        console.log(`   - Total Queries: ${data.complexity.breakdown.totalQueries}\n`);
+        
+        if (data.complexity.problemBreakpoints.length > 0) {
+            console.log('   ⚠️  Problem Breakpoints:');
+            data.complexity.problemBreakpoints.forEach(pb => {
+                console.log(`   - ${pb.breakpoint}: ${pb.propertyCount} properties (${pb.reason})`);
+            });
+            console.log('');
+        }
+    }
 
     console.log('📐 BREAKPOINT BREAKDOWN:\n');
 
